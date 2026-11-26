@@ -5,23 +5,16 @@ Claude Code 옆 패널에 작업 진행 상황을 보여주는 플러그인. 패
 - 현재 세션: 작업 중인지, 지금 하는 일, 할 일 목록(TodoWrite)
 - 에이전트: 이 세션이 띄운 하위 에이전트의 상태, 지금 하는 일, 할 일 목록
 
-## 설치 (다른 컴퓨터에서)
+## 설치
 
-이 폴더가 그대로 마켓플레이스(`monty-mods`) 겸 플러그인(`progress-cat`)이다.
+```sh
+claude plugin install progress-cat --marketplace dev-montyoh/claude-cat
+```
 
-1. 이 폴더를 그 컴퓨터로 옮긴다. 복사하거나 GitHub에 올려서 clone한다.
-2. 마켓플레이스를 등록한다.
-   ```sh
-   claude plugin marketplace add ~/옮긴/경로/claude-cat
-   # GitHub에 올렸다면: claude plugin marketplace add <계정>/<저장소>
-   ```
-3. 플러그인을 설치한다. user scope로 깔리므로 모든 프로젝트에서 쓸 수 있다.
-   ```sh
-   claude plugin install progress-cat@monty-mods
-   ```
-4. Claude Code를 다시 켜면 패널이 자동으로 열린다. 닫았으면 `/progress`로 연다.
+이 한 줄이면 된다. user scope로 깔리므로 모든 프로젝트에서 쓸 수 있다. Claude Code를 다시 켜면 패널이 자동으로 열리고, 닫았으면 `/progress`로 다시 연다.
 
-지우기: `claude plugin uninstall progress-cat@monty-mods`
+- 설치 없이 한 번만 써보기: `git clone https://github.com/dev-montyoh/claude-cat && claude --plugin-dir claude-cat`
+- 지우기: `claude plugin uninstall progress-cat@monty-mods`
 
 ## 고친 뒤 반영하기
 
