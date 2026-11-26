@@ -11,6 +11,28 @@ const todos = atom({ plugin: 'progress-cat', key: 'todos' } as const, {}, { shap
 const main = atom({ plugin: 'progress-cat', key: 'main' } as const, { isBusy: false, doing: '' }, { shape: 'main-1' })
 const agents = atom({ plugin: 'progress-cat', key: 'agents' } as const, [], { shape: 'agents-1' })
 const cat = atom({ plugin: 'progress-cat', key: 'cat' } as const, 'sleep', { shape: 'cat-2' })
+/** GitHub에 올라온 더 새 버전. 없으면 '' */
+const newer = atom({ plugin: 'progress-cat', key: 'newer' } as const, '', { shape: 'newer-1' })
+
+const LATEST_URL = 'https://raw.githubusercontent.com/dev-montyoh/claude-cat/main/.claude-plugin/plugin.json'
+const UPDATE_COMMAND = 'claude plugin marketplace update monty-mods && claude plugin update progress-cat@monty-mods'
+/** "0.10.0"이 "0.9.1"보다 새것인지처럼, 점으로 나눈 숫자를 앞에서부터 비교한다 */
+const isNewer = (remote: string, local: string): boolean => {
+  const a = remote.split('.').map(Number)
+  const b = local.split('.').map(Number)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0)
+  }
+  return false
+}
+/** 설치된 버전과 GitHub 버전을 비교해, 새 버전이 있으면 기억한다. 네트워크가 안 되면 조용히 넘어간다 */
+const checkUpdate = async ($: any) => {
+  const local: string = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version
+  const res = await $.http.fetch(LATEST_URL)
+  if (!res.ok) return
+  const remote: string = JSON.parse(res.text).version
+  await update($, newer, () => (isNewer(remote, local) ? remote : ''))
+}
 
 const DEFAULT = 0x01000000
 const Z_COLOR = 0x8caae6
@@ -104,6 +126,7 @@ export const register: Register = on => {
       if (tick % 25 === 0) await settle($)
     })
     void $.ui.open({ id: PANE, title: '작업 진행' })
+    void checkUpdate($).catch(() => {})
     return next(e)
   })
 
@@ -156,6 +179,7 @@ export const register: Register = on => {
     const Raster = 'Raster' in elements ? elements.Raster : undefined
     const todoMap = await read($, todos)
     const me = await read($, main)
+    const latest = await read($, newer)
     const agentList = await read($, agents)
     const mode = await read($, cat)
     const cols = Math.max(20, (e.viewport?.columns ?? 40) - 2)
@@ -203,6 +227,14 @@ export const register: Register = on => {
                 {!agent.isDone && todoView(agent.id)}
               </Box>
             ))}
+          </Box>
+        )}
+        {latest !== '' && (
+          <Box flexDirection="column">
+            <Text> </Text>
+            <Text color="yellow" bold>{`새 버전 ${latest}이 나왔어요`}</Text>
+            <Text dimColor>{UPDATE_COMMAND}</Text>
+            <Text dimColor>실행한 뒤 /reload-plugins</Text>
           </Box>
         )}
       </Box>

@@ -16,6 +16,11 @@ claude plugin install progress-cat --marketplace dev-montyoh/claude-cat
 - 설치 없이 한 번만 써보기: `git clone https://github.com/dev-montyoh/claude-cat && claude --plugin-dir claude-cat`
 - 지우기: `claude plugin uninstall progress-cat@monty-mods`
 
+### 업데이트 받기
+
+- 새 버전이 GitHub에 올라오면 세션을 시작할 때 패널 맨 아래에 알림과 업데이트 명령이 뜬다.
+- 자동으로 받으려면 `/plugin`을 열고 Marketplaces 탭에서 `monty-mods`를 골라 auto-update를 켠다. 직접 추가한 마켓플레이스는 기본으로 꺼져 있다. 켜두면 세션에서 첫 메시지를 보낸 뒤 10분 안에 새 버전을 받고, `/reload-plugins`를 하라는 안내가 뜬다.
+
 ## 고친 뒤 반영하기
 
 1. `.claude-plugin/plugin.json`의 `version`을 올린다. 버전이 같으면 업데이트가 안 된다.

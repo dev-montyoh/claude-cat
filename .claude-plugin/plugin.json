@@ -1,1 +1,1 @@
-{ "name": "progress-cat", "version": "0.5.0", "description": "세션 할 일·에이전트·최근 활동을 옆 패널에 보여주고, 작업 상태에 따라 도트 고양이(Claude Cat)가 달리고 쉬고 잔다", "types": "./types/index.d.ts" }
+{ "name": "progress-cat", "version": "0.5.1", "description": "세션 할 일·에이전트·최근 활동을 옆 패널에 보여주고, 작업 상태에 따라 도트 고양이(Claude Cat)가 달리고 쉬고 잔다", "types": "./types/index.d.ts" }
