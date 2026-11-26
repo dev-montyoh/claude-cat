@@ -96,10 +96,9 @@ const settle = async ($: any) => {
   const isBusy = mainBusy || list.some(agent => !agent.isDone)
   const mode = await read($, cat)
   if (isBusy && mode !== 'run') await update($, cat, (): CatMode => 'run')
-  // ponytail: 앉기는 임시로 뺌(그림 영역 높이를 줄이려고). 되살리려면 'sleep'을 'sit'으로, cat_sprites.py 높이 계산에 SIT 다시 넣기
-  if (!isBusy && mode !== 'sleep') {
+  if (!isBusy && mode === 'run') {
     sitSince = Date.now()
-    await update($, cat, (): CatMode => 'sleep')
+    await update($, cat, (): CatMode => 'sit')
   }
   if (!isBusy && mode === 'sit' && Date.now() - sitSince > SLEEP_AFTER_MS) await update($, cat, (): CatMode => 'sleep')
 }
@@ -128,7 +127,7 @@ async function draw($: any, e: any, isBand: boolean) {
   const mode = await read($, cat)
   const body: number = e.props?.bodyColumns ?? e.viewport?.columns ?? 40
   // 띠에서는 고양이 옆 두 칸(현재 세션, 에이전트)이 너비를 나눠 쓴다
-  const cols = Math.max(16, isBand ? Math.floor((body - WIDTH - 6) / 2) : body - 2)
+  const cols = Math.max(16, isBand ? Math.floor((body - WIDTH - 8) / 2) : body - 2)
   const cut = (s: string) => (s.length > cols ? s.slice(0, cols - 1) + '…' : s)
   const look = CELLS[colorOf(await $.store.get('catColor'))]
   const cells = mode === 'run' ? look?.run[0] : mode === 'sit' ? look?.sit[0] : look?.sleep[3]
@@ -165,14 +164,16 @@ async function draw($: any, e: any, isBand: boolean) {
       {todoView('main')}
     </Box>
   )
-  const agentView = agentList.length > 0 && (
+  // 끝난 에이전트는 숨긴다
+  const live = agentList.filter(agent => !agent.isDone)
+  const agentView = live.length > 0 && (
     <Box flexDirection="column">
       <Text bold>에이전트</Text>
-      {agentList.slice(-5).map(agent => (
+      {live.slice(-5).map(agent => (
         <Box flexDirection="column">
-          <Text dimColor={agent.isDone}>{cut(`${agent.isDone ? '✔' : '▶'} ${agent.label}`)}</Text>
-          {!agent.isDone && agent.doing && <Text color="cyan">{cut(`  └ ${agent.doing}`)}</Text>}
-          {!agent.isDone && todoView(agent.id)}
+          <Text>{cut(`▶ ${agent.label}`)}</Text>
+          {agent.doing && <Text color="cyan">{cut(`  └ ${agent.doing}`)}</Text>}
+          {todoView(agent.id)}
         </Box>
       ))}
     </Box>
@@ -188,7 +189,7 @@ async function draw($: any, e: any, isBand: boolean) {
     return (
       <Box flexDirection="column">
         <Box flexDirection="row">
-          {catView}
+          <Box marginLeft={2}>{catView}</Box>
           <Box flexDirection="column" marginLeft={2} width={cols}>{sessionView}</Box>
           {agentView && <Box flexDirection="column" marginLeft={2} width={cols}>{agentView}</Box>}
         </Box>
@@ -232,13 +233,13 @@ export const register: Register = on => {
     const saved = await $.store.get('layout')
     const where: Layout = saved === 'band' ? 'band' : 'pane'
     await update($, layout, () => where)
-    if (where === 'pane') void $.ui.open({ id: PANE, title: '작업 진행' })
+    if (where === 'pane') void $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
     void checkUpdate($).catch(() => {})
     return next(e)
   })
 
   on('command.run', { command: 'progress' }, async $ => {
-    await $.ui.open({ id: PANE, title: '작업 진행' })
+    await $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
     return { text: '작업 진행 패널을 열었어요.' }
   })
 
@@ -248,7 +249,7 @@ export const register: Register = on => {
     await update($, layout, () => where)
     await $.store.set('layout', where)
     if (where === 'band') await $.ui.close({ id: PANE }).catch(() => {})
-    else await $.ui.open({ id: PANE, title: '작업 진행' })
+    else await $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
     return { text: where === 'band' ? '고양이를 입력창 위로 옮겼어요.' : '고양이를 오른쪽 패널로 옮겼어요.' }
   })
 
