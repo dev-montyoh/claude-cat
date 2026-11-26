@@ -14,8 +14,8 @@ const cat = atom({ plugin: 'progress-cat', key: 'cat' } as const, 'sleep', { sha
 /** GitHub에 올라온 더 새 버전. 없으면 '' */
 const newer = atom({ plugin: 'progress-cat', key: 'newer' } as const, '', { shape: 'newer-1' })
 
-/** 어디에 그릴지: 'pane' 오른쪽 패널(세로), 'band' 입력창 바로 위 띠(가로). $.store에도 남겨 다음 세션에 이어진다 */
-const layout = atom({ plugin: 'progress-cat', key: 'layout' } as const, 'pane', { shape: 'layout-1' })
+/** 어디에 그릴지: 'band' 입력창 바로 위 띠(가로, 기본), 'pane' 오른쪽 패널(세로). $.store에도 남겨 다음 세션에 이어진다 */
+const layout = atom({ plugin: 'progress-cat', key: 'layout' } as const, 'band', { shape: 'layout-1' })
 const LAYOUTS: Record<string, Layout> = { 세로: 'pane', 가로: 'band' }
 /** 띠가 그려진 자리(blit할 때 씀). 띠가 아직 안 그려졌으면 '' */
 let bandId = ''
@@ -231,7 +231,7 @@ export const register: Register = on => {
     })
     await $.command.register({ name: 'cat-mode', description: '고양이 자리를 바꾼다 (세로: 오른쪽 패널 · 가로: 입력창 위)' })
     const saved = await $.store.get('layout')
-    const where: Layout = saved === 'band' ? 'band' : 'pane'
+    const where: Layout = saved === 'pane' ? 'pane' : 'band'  // 기본은 가로
     await update($, layout, () => where)
     if (where === 'pane') void $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
     void checkUpdate($).catch(() => {})

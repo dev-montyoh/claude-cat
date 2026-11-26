@@ -15,7 +15,7 @@ Claude Code 옆 패널에 작업 진행 상황을 보여주는 플러그인. 패
 claude plugin install progress-cat --marketplace dev-montyoh/claude-cat
 ```
 
-이 한 줄이면 된다. user scope로 깔리므로 모든 프로젝트에서 쓸 수 있다. Claude Code를 다시 켜면 패널이 자동으로 열리고, 닫았으면 `/progress`로 다시 연다.
+이 한 줄이면 된다. user scope로 깔리므로 모든 프로젝트에서 쓸 수 있다. Claude Code를 다시 켜면 입력창 바로 위에 고양이가 나온다. 오른쪽 패널로 보려면 `/cat-mode 세로`.
 
 - 설치 없이 한 번만 써보기: `git clone https://github.com/dev-montyoh/claude-cat && claude --plugin-dir claude-cat`
 - 지우기: `claude plugin uninstall progress-cat@monty-mods`
@@ -29,4 +29,4 @@ claude plugin install progress-cat --marketplace dev-montyoh/claude-cat
 
 - `/progress`: 패널 열기
 - `/cat 회색|검정|치즈|흰색`: 고양이 색 바꾸기(다음 세션에도 유지)
-- `/cat-mode 세로|가로`: 고양이 자리 바꾸기. 세로는 오른쪽 패널, 가로는 입력창 바로 위 띠(고양이 | 현재 세션 | 에이전트). 다음 세션에도 유지
+- `/cat-mode 세로|가로`: 고양이 자리 바꾸기. 가로(기본)는 입력창 바로 위 띠(고양이 | 현재 세션 | 에이전트), 세로는 오른쪽 패널. 다음 세션에도 유지
