@@ -11,6 +11,9 @@ const todos = atom({ plugin: 'progress-cat', key: 'todos' } as const, {}, { shap
 const main = atom({ plugin: 'progress-cat', key: 'main' } as const, { isBusy: false, doing: '' }, { shape: 'main-1' })
 const agents = atom({ plugin: 'progress-cat', key: 'agents' } as const, [], { shape: 'agents-1' })
 const cat = atom({ plugin: 'progress-cat', key: 'cat' } as const, 'sleep', { shape: 'cat-2' })
+/** GitHub에 올라온 더 새 버전. 없으면 '' */
+const newer = atom({ plugin: 'progress-cat', key: 'newer' } as const, '', { shape: 'newer-1' })
+
 const LATEST_URL = 'https://raw.githubusercontent.com/dev-montyoh/claude-cat/main/.claude-plugin/plugin.json'
 const UPDATE_COMMAND = 'claude plugin marketplace update monty-mods && claude plugin update progress-cat@monty-mods'
 /** "0.10.0"이 "0.9.1"보다 새것인지처럼, 점으로 나눈 숫자를 앞에서부터 비교한다 */
@@ -22,13 +25,13 @@ const isNewer = (remote: string, local: string): boolean => {
   }
   return false
 }
-/** 설치된 버전과 GitHub 버전을 비교해, 새 버전이 있으면 프롬프트 아래 왼쪽 상태 줄에 띄운다. 네트워크가 안 되면 조용히 넘어간다 */
+/** 설치된 버전과 GitHub 버전을 비교해, 새 버전이 있으면 기억한다(패널 왼쪽 아래에 뜸). 네트워크가 안 되면 조용히 넘어간다 */
 const checkUpdate = async ($: any) => {
   const local: string = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version
   const res = await $.http.fetch(LATEST_URL)
   if (!res.ok) return
   const remote: string = JSON.parse(res.text).version
-  $.ui.status(isNewer(remote, local) ? `progress-cat 새 버전 ${remote} · ${UPDATE_COMMAND}` : undefined)
+  await update($, newer, () => (isNewer(remote, local) ? remote : ''))
 }
 
 const DEFAULT = 0x01000000
@@ -176,6 +179,7 @@ export const register: Register = on => {
     const Raster = 'Raster' in elements ? elements.Raster : undefined
     const todoMap = await read($, todos)
     const me = await read($, main)
+    const latest = await read($, newer)
     const agentList = await read($, agents)
     const mode = await read($, cat)
     const cols = Math.max(20, (e.viewport?.columns ?? 40) - 2)
@@ -202,7 +206,8 @@ export const register: Register = on => {
       mode === 'run' ? (running > 0 ? `달리는 중… (에이전트 ${running}개 작업 중)` : '달리는 중…') :
       mode === 'sit' ? '잠깐 쉬는 중' : '쿨쿨 자는 중'
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" height="100%">
+        <Box flexDirection="column" flexGrow={1}>
         <Box flexDirection="column" alignItems="center">
           {Raster ? <Raster key="cat" columns={WIDTH} rows={HEIGHT / 2} cells={cells ?? ''} /> : null}
           <Text dimColor>{`[Claude Cat: ${caption}]`}</Text>
@@ -223,6 +228,13 @@ export const register: Register = on => {
                 {!agent.isDone && todoView(agent.id)}
               </Box>
             ))}
+          </Box>
+        )}
+        </Box>
+        {latest !== '' && (
+          <Box flexDirection="column">
+            <Text color="yellow">{cut(`새 버전 ${latest}이 나왔어요`)}</Text>
+            <Text dimColor wrap="wrap">{UPDATE_COMMAND}</Text>
           </Box>
         )}
       </Box>
