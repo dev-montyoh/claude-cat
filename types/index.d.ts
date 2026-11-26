@@ -9,7 +9,6 @@ declare module 'claude-code' {
       main: Shaped<{ isBusy: boolean; doing: string }>
       agents: Shaped<Agent[]>
       cat: Shaped<CatMode>
-      newer: Shaped<string>
     }
   }
 }
