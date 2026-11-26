@@ -1,0 +1,1 @@
+{ "name": "monty-mods", "description": "monty의 개인 Claude Code 모드", "owner": { "name": "monty" }, "plugins": [{ "name": "progress-cat", "source": "./" }] }
