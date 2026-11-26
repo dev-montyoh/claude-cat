@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import type { Agent, CatMode, Todo } from '../types'
+import type { Agent, CatMode, Layout, Todo } from '../types'
 import { HEIGHT, RUN, SIT, SLEEP, THEMES, WIDTH, Z_AT } from './cat'
 
 const PANE = 'progress-cat'
@@ -13,6 +13,12 @@ const agents = atom({ plugin: 'progress-cat', key: 'agents' } as const, [], { sh
 const cat = atom({ plugin: 'progress-cat', key: 'cat' } as const, 'sleep', { shape: 'cat-2' })
 /** GitHub에 올라온 더 새 버전. 없으면 '' */
 const newer = atom({ plugin: 'progress-cat', key: 'newer' } as const, '', { shape: 'newer-1' })
+
+/** 어디에 그릴지: 'pane' 오른쪽 패널(세로), 'band' 입력창 바로 위 띠(가로). $.store에도 남겨 다음 세션에 이어진다 */
+const layout = atom({ plugin: 'progress-cat', key: 'layout' } as const, 'pane', { shape: 'layout-1' })
+const LAYOUTS: Record<string, Layout> = { 세로: 'pane', 가로: 'band' }
+/** 띠가 그려진 자리(blit할 때 씀). 띠가 아직 안 그려졌으면 '' */
+let bandId = ''
 
 const LATEST_URL = 'https://raw.githubusercontent.com/dev-montyoh/claude-cat/main/.claude-plugin/plugin.json'
 const UPDATE_COMMAND = 'claude plugin marketplace update monty-mods && claude plugin update progress-cat@monty-mods'
@@ -110,6 +116,101 @@ const markAgent = async ($: any, id: string, isDone: boolean, label?: string) =>
   await settle($)
 }
 
+/** 패널(세로)과 띠(가로)가 같이 쓰는 그림. 띠에서는 고양이 | 현재 세션 | 에이전트 순으로 가로로 늘어선다 */
+async function draw($: any, e: any, isBand: boolean) {
+  const elements = $.ui.resolve(e)
+  const { Box, Text } = elements
+  const Raster = 'Raster' in elements ? elements.Raster : undefined
+  const todoMap = await read($, todos)
+  const me = await read($, main)
+  const latest = await read($, newer)
+  const agentList = await read($, agents)
+  const mode = await read($, cat)
+  const body: number = e.props?.bodyColumns ?? e.viewport?.columns ?? 40
+  // 띠에서는 고양이 옆 두 칸(현재 세션, 에이전트)이 너비를 나눠 쓴다
+  const cols = Math.max(16, isBand ? Math.floor((body - WIDTH - 6) / 2) : body - 2)
+  const cut = (s: string) => (s.length > cols ? s.slice(0, cols - 1) + '…' : s)
+  const look = CELLS[colorOf(await $.store.get('catColor'))]
+  const cells = mode === 'run' ? look?.run[0] : mode === 'sit' ? look?.sit[0] : look?.sleep[3]
+  const running = agentList.filter(agent => !agent.isDone).length
+  /** 그 세션·에이전트가 만든 할 일 목록(없으면 아무것도 안 그림) */
+  const todoView = (id: string) => {
+    const list = todoMap[id] ?? []
+    if (list.length === 0) return null
+    return (
+      <Box flexDirection="column">
+        <Text dimColor>{`  할 일 ${list.filter(t => t.status === 'completed').length}/${list.length}`}</Text>
+        {list.map(t => (
+          <Text dimColor={t.status === 'completed'} bold={t.status === 'in_progress'}>
+            {cut(`  ${t.status === 'completed' ? '✔' : t.status === 'in_progress' ? '▶' : '○'} ${t.status === 'in_progress' ? t.activeForm ?? t.content : t.content}`)}
+          </Text>
+        ))}
+      </Box>
+    )
+  }
+  const caption =
+    mode === 'run' ? (running > 0 ? `달리는 중… (에이전트 ${running}개 작업 중)` : '달리는 중…') :
+    mode === 'sit' ? '잠깐 쉬는 중' : '쿨쿨 자는 중'
+  const catView = (
+    <Box flexDirection="column" alignItems="center">
+      {Raster ? <Raster key="cat" columns={WIDTH} rows={HEIGHT / 2} cells={cells ?? ''} /> : null}
+      {!isBand && <Text dimColor>{`[Claude Cat: ${caption}]`}</Text>}
+    </Box>
+  )
+  const sessionView = (
+    <Box flexDirection="column">
+      <Text bold>현재 세션</Text>
+      <Text dimColor={!me.isBusy}>{me.isBusy ? '▶ 작업 중' : '✔ 쉬는 중'}</Text>
+      {me.isBusy && me.doing && <Text color="cyan">{cut(`  └ ${me.doing}`)}</Text>}
+      {todoView('main')}
+    </Box>
+  )
+  const agentView = agentList.length > 0 && (
+    <Box flexDirection="column">
+      <Text bold>에이전트</Text>
+      {agentList.slice(-5).map(agent => (
+        <Box flexDirection="column">
+          <Text dimColor={agent.isDone}>{cut(`${agent.isDone ? '✔' : '▶'} ${agent.label}`)}</Text>
+          {!agent.isDone && agent.doing && <Text color="cyan">{cut(`  └ ${agent.doing}`)}</Text>}
+          {!agent.isDone && todoView(agent.id)}
+        </Box>
+      ))}
+    </Box>
+  )
+  const notice = latest !== '' && (
+    <Box flexDirection="column">
+      <Text color="yellow">{cut(`새 버전 ${latest}이 나왔어요`)}</Text>
+      <Text dimColor wrap="wrap">{UPDATE_COMMAND}</Text>
+    </Box>
+  )
+  if (isBand) {
+    // 배경색을 따로 칠하지 않아 터미널 배경이 그대로 보인다
+    return (
+      <Box flexDirection="column">
+        <Box flexDirection="row">
+          {catView}
+          <Box flexDirection="column" marginLeft={2} width={cols}>{sessionView}</Box>
+          {agentView && <Box flexDirection="column" marginLeft={2} width={cols}>{agentView}</Box>}
+        </Box>
+        {notice}
+      </Box>
+    )
+  }
+  return (
+    // 패널 높이(bodyRows)만큼 늘려서 새 버전 알림이 패널 왼쪽 맨 아래에 붙게 한다
+    <Box flexDirection="column" minHeight={e.props?.scroll?.bodyRows}>
+      <Box flexDirection="column" flexGrow={1}>
+        {catView}
+        <Text> </Text>
+        {sessionView}
+        {agentView && <Text> </Text>}
+        {agentView}
+      </Box>
+      {notice}
+    </Box>
+  )
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'progress', description: '작업 진행 패널을 연다' })
@@ -119,13 +220,19 @@ export const register: Register = on => {
     $.clock.every(120, async () => {
       tick++
       const mode = await read($, cat)
-      if (mode === 'run') void $.ui.blit({ requestId: PANE, key: 'cat', cells: CELLS[color]?.run[tick % RUN.length] ?? '' }).catch(() => {})
+      const requestId = (await read($, layout)) === 'band' ? bandId : PANE
+      const blit = (cells: string | undefined) => { if (requestId) void $.ui.blit({ requestId, key: 'cat', cells: cells ?? '' }).catch(() => {}) }
+      if (mode === 'run') blit(CELLS[color]?.run[tick % RUN.length])
       // 앉아 있을 땐 가끔 귀를 쫑긋한다(4장 재생 후 첫 장으로 쉼)
-      if (mode === 'sit' && tick % 4 === 0) void $.ui.blit({ requestId: PANE, key: 'cat', cells: CELLS[color]?.sit[(tick / 4) % 12] ?? CELLS[color]?.sit[0] ?? '' }).catch(() => {})
-      if (mode === 'sleep' && tick % 7 === 0) void $.ui.blit({ requestId: PANE, key: 'cat', cells: CELLS[color]?.sleep[(tick / 7) % 4] ?? '' }).catch(() => {})
+      if (mode === 'sit' && tick % 4 === 0) blit(CELLS[color]?.sit[(tick / 4) % 12] ?? CELLS[color]?.sit[0])
+      if (mode === 'sleep' && tick % 7 === 0) blit(CELLS[color]?.sleep[(tick / 7) % 4])
       if (tick % 25 === 0) await settle($)
     })
-    void $.ui.open({ id: PANE, title: '작업 진행' })
+    await $.command.register({ name: 'cat-mode', description: '고양이 자리를 바꾼다 (세로: 오른쪽 패널 · 가로: 입력창 위)' })
+    const saved = await $.store.get('layout')
+    const where: Layout = saved === 'band' ? 'band' : 'pane'
+    await update($, layout, () => where)
+    if (where === 'pane') void $.ui.open({ id: PANE, title: '작업 진행' })
     void checkUpdate($).catch(() => {})
     return next(e)
   })
@@ -133,6 +240,16 @@ export const register: Register = on => {
   on('command.run', { command: 'progress' }, async $ => {
     await $.ui.open({ id: PANE, title: '작업 진행' })
     return { text: '작업 진행 패널을 열었어요.' }
+  })
+
+  on('command.run', { command: 'cat-mode' }, async ($, e) => {
+    const where = LAYOUTS[e.args.trim()]
+    if (!where) return { text: `/cat-mode 세로 (오른쪽 패널) 또는 /cat-mode 가로 (입력창 위)` }
+    await update($, layout, () => where)
+    await $.store.set('layout', where)
+    if (where === 'band') await $.ui.close({ id: PANE }).catch(() => {})
+    else await $.ui.open({ id: PANE, title: '작업 진행' })
+    return { text: where === 'band' ? '고양이를 입력창 위로 옮겼어요.' : '고양이를 오른쪽 패널로 옮겼어요.' }
   })
 
   on('command.run', { command: 'cat' }, async ($, e) => {
@@ -173,72 +290,11 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const elements = $.ui.resolve(e)
-    const { Box, Text } = elements
-    const Raster = 'Raster' in elements ? elements.Raster : undefined
-    const todoMap = await read($, todos)
-    const me = await read($, main)
-    const latest = await read($, newer)
-    const agentList = await read($, agents)
-    const mode = await read($, cat)
-    const cols = Math.max(20, (e.viewport?.columns ?? 40) - 2)
-    const cut = (s: string) => (s.length > cols ? s.slice(0, cols - 1) + '…' : s)
-    const look = CELLS[colorOf(await $.store.get('catColor'))]
-    const cells = mode === 'run' ? look?.run[0] : mode === 'sit' ? look?.sit[0] : look?.sleep[3]
-    const running = agentList.filter(agent => !agent.isDone).length
-    /** 그 세션·에이전트가 만든 할 일 목록(없으면 아무것도 안 그림) */
-    const todoView = (id: string) => {
-      const list = todoMap[id] ?? []
-      if (list.length === 0) return null
-      return (
-        <Box flexDirection="column">
-          <Text dimColor>{`  할 일 ${list.filter(t => t.status === 'completed').length}/${list.length}`}</Text>
-          {list.map(t => (
-            <Text dimColor={t.status === 'completed'} bold={t.status === 'in_progress'}>
-              {cut(`  ${t.status === 'completed' ? '✔' : t.status === 'in_progress' ? '▶' : '○'} ${t.status === 'in_progress' ? t.activeForm ?? t.content : t.content}`)}
-            </Text>
-          ))}
-        </Box>
-      )
-    }
-    const caption =
-      mode === 'run' ? (running > 0 ? `달리는 중… (에이전트 ${running}개 작업 중)` : '달리는 중…') :
-      mode === 'sit' ? '잠깐 쉬는 중' : '쿨쿨 자는 중'
-    return (
-      // 패널 높이(bodyRows)만큼 늘려서 새 버전 알림이 패널 왼쪽 맨 아래에 붙게 한다
-      <Box flexDirection="column" minHeight={e.props?.scroll?.bodyRows}>
-        <Box flexDirection="column" flexGrow={1}>
-        <Box flexDirection="column" alignItems="center">
-          {Raster ? <Raster key="cat" columns={WIDTH} rows={HEIGHT / 2} cells={cells ?? ''} /> : null}
-          <Text dimColor>{`[Claude Cat: ${caption}]`}</Text>
-        </Box>
-        <Text> </Text>
-        <Text bold>현재 세션</Text>
-        <Text dimColor={!me.isBusy}>{me.isBusy ? '▶ 작업 중' : '✔ 쉬는 중'}</Text>
-        {me.isBusy && me.doing && <Text color="cyan">{cut(`  └ ${me.doing}`)}</Text>}
-        {todoView('main')}
-        {agentList.length > 0 && (
-          <Box flexDirection="column">
-            <Text> </Text>
-            <Text bold>에이전트</Text>
-            {agentList.slice(-5).map(agent => (
-              <Box flexDirection="column">
-                <Text dimColor={agent.isDone}>{cut(`${agent.isDone ? '✔' : '▶'} ${agent.label}`)}</Text>
-                {!agent.isDone && agent.doing && <Text color="cyan">{cut(`  └ ${agent.doing}`)}</Text>}
-                {!agent.isDone && todoView(agent.id)}
-              </Box>
-            ))}
-          </Box>
-        )}
-        </Box>
-        {latest !== '' && (
-          <Box flexDirection="column">
-            <Text color="yellow">{cut(`새 버전 ${latest}이 나왔어요`)}</Text>
-            <Text dimColor wrap="wrap">{UPDATE_COMMAND}</Text>
-          </Box>
-        )}
-      </Box>
-    )
+  on('ui.render', { component: 'Pane', requestId: PANE }, ($, e) => draw($, e, false))
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.props.hasSurvey || (await read($, layout)) !== 'band') return next(e)
+    bandId = e.requestId
+    return draw($, e, true)
   })
 }

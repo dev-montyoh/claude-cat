@@ -29,3 +29,4 @@ claude plugin install progress-cat --marketplace dev-montyoh/claude-cat
 
 - `/progress`: 패널 열기
 - `/cat 회색|검정|치즈|흰색`: 고양이 색 바꾸기(다음 세션에도 유지)
+- `/cat-mode 세로|가로`: 고양이 자리 바꾸기. 세로는 오른쪽 패널, 가로는 입력창 바로 위 띠(고양이 | 현재 세션 | 에이전트). 다음 세션에도 유지
