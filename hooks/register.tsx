@@ -206,7 +206,8 @@ export const register: Register = on => {
       mode === 'run' ? (running > 0 ? `달리는 중… (에이전트 ${running}개 작업 중)` : '달리는 중…') :
       mode === 'sit' ? '잠깐 쉬는 중' : '쿨쿨 자는 중'
     return (
-      <Box flexDirection="column" height="100%">
+      // 패널 높이(bodyRows)만큼 늘려서 새 버전 알림이 패널 왼쪽 맨 아래에 붙게 한다
+      <Box flexDirection="column" minHeight={e.props?.scroll?.bodyRows}>
         <Box flexDirection="column" flexGrow={1}>
         <Box flexDirection="column" alignItems="center">
           {Raster ? <Raster key="cat" columns={WIDTH} rows={HEIGHT / 2} cells={cells ?? ''} /> : null}
