@@ -1,7 +1,7 @@
 export type Todo = { content: string; activeForm?: string; status: 'pending' | 'in_progress' | 'completed' }
 export type Agent = { id: string; label: string; isDone: boolean; doing?: string }
 export type CatMode = 'run' | 'sit' | 'sleep'
-export type Layout = 'pane' | 'band'
+export type Layout = 'pane' | 'band' | 'off'
 
 declare module 'claude-code' {
   interface PluginState {
