@@ -39,3 +39,18 @@ test('꺼 두면(/cat-mode 끄기) 띠를 그리지 않는다', async ($, on) =>
   expect(await ui.find({ type: 'Text', text: /현재 세션/ })).toBeUndefined()
   await ui.unmount()
 })
+
+test('/cat 3 으로 저장해 두면 고양이 3마리를 그린다', async ($, on) => {
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('store.get', (_, e) => ({ value: e.key === 'catCount' ? 3 : undefined }))
+  on('fs.read', () => ({ value: '{"version":"0.1.2"}' }))
+  on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: '{"version":"0.1.2"}' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ui.find({ type: 'Raster', key: 'cat2' })).toBeDefined()
+  expect(await ui.find({ type: 'Raster', key: 'cat3' })).toBeUndefined()
+  await ui.unmount()
+})

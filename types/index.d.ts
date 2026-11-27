@@ -12,6 +12,7 @@ declare module 'claude-code' {
       cat: Shaped<CatMode>
       newer: Shaped<string>
       layout: Shaped<Layout>
+      count: Shaped<number>
     }
   }
 }
