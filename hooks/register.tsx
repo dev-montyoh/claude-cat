@@ -6,7 +6,6 @@ import { HEIGHT, RUN, SIT, SLEEP, THEMES, WIDTH, Z_AT } from './cat'
 
 type CatCells = { run: string[]; sit: string[]; sleep: string[] }
 
-const PANE = 'progress-cat'
 /** 누가 만든 할 일 목록인지(메인은 'main', 하위 에이전트는 agentId) → 목록 */
 const todos = atom({ plugin: 'progress-cat', key: 'todos' } as const, {}, { shape: 'todos-2' })
 /** 현재(메인) 세션이 작업 중인지, 지금 뭘 하는지 */
@@ -31,9 +30,8 @@ const frameOf = (look: CatCells | undefined, mode: CatMode, tick: number, i: num
 /** GitHub에 올라온 더 새 버전. 없으면 '' */
 const newer = atom({ plugin: 'progress-cat', key: 'newer' } as const, '', { shape: 'newer-1' })
 
-/** 어디에 그릴지: 'band' 입력창 바로 위 띠(가로, 기본), 'pane' 오른쪽 패널(세로), 'off' 숨김. $.store에도 남겨 다음 세션에 이어진다 */
-const layout = atom({ plugin: 'progress-cat', key: 'layout' } as const, 'band', { shape: 'layout-1' })
-const LAYOUTS: Record<string, Layout> = { 세로: 'pane', 가로: 'band', 끄기: 'off' }
+/** 고양이를 띄울지: 'band' 입력창 바로 위 띠(기본), 'off' 숨김. $.store에도 남겨 다음 세션에 이어진다 */
+const layout = atom({ plugin: 'progress-cat', key: 'layout' } as const, 'band', { shape: 'layout-2' })
 /** 띠가 그려진 자리(blit할 때 씀). 띠가 아직 안 그려졌으면 '' */
 let bandId = ''
 
@@ -48,7 +46,7 @@ const isNewer = (remote: string, local: string): boolean => {
   }
   return false
 }
-/** 설치된 버전과 GitHub 버전을 비교해, 새 버전이 있으면 기억한다(패널 왼쪽 아래에 뜸). 네트워크가 안 되면 조용히 넘어간다 */
+/** 설치된 버전과 GitHub 버전을 비교해, 새 버전이 있으면 기억한다(띠 맨 아래에 뜸). 네트워크가 안 되면 조용히 넘어간다 */
 const checkUpdate = async ($: any) => {
   const local: string = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version
   const res = await $.http.fetch(LATEST_URL)
@@ -133,8 +131,8 @@ const markAgent = async ($: any, id: string, isDone: boolean, label?: string) =>
   await settle($)
 }
 
-/** 패널(세로)과 띠(가로)가 같이 쓰는 그림. 띠에서는 고양이 | 현재 세션 | 에이전트 순으로 가로로 늘어선다 */
-async function draw($: any, e: any, isBand: boolean) {
+/** 입력창 위 띠: 고양이 | 현재 세션 | 에이전트 순으로 가로로 늘어선다 */
+async function draw($: any, e: any) {
   const elements = $.ui.resolve(e)
   const { Box, Text } = elements
   const Raster = 'Raster' in elements ? elements.Raster : undefined
@@ -146,10 +144,9 @@ async function draw($: any, e: any, isBand: boolean) {
   const body: number = e.props?.bodyColumns ?? e.viewport?.columns ?? 40
   // 띠에서는 고양이 옆 두 칸(현재 세션, 에이전트)이 너비를 나눠 쓴다
   const cats = await read($, count)
-  const cols = Math.max(16, isBand ? Math.floor((body - cats * (WIDTH + 1) - 8) / 2) : body - 2)
+  const cols = Math.max(16, Math.floor((body - cats * (WIDTH + 1) - 8) / 2))
   const cut = (s: string) => (s.length > cols ? s.slice(0, cols - 1) + '…' : s)
   const first = colorOf(await $.store.get('catColor'))
-  const running = agentList.filter(agent => !agent.isDone).length
   /** 그 세션·에이전트가 만든 할 일 목록(없으면 아무것도 안 그림) */
   const todoView = (id: string) => {
     const list = todoMap[id] ?? []
@@ -165,9 +162,6 @@ async function draw($: any, e: any, isBand: boolean) {
       </Box>
     )
   }
-  const caption =
-    mode === 'run' ? (running > 0 ? `달리는 중… (에이전트 ${running}개 작업 중)` : '달리는 중…') :
-    mode === 'sit' ? '잠깐 쉬는 중' : '쿨쿨 자는 중'
   const catView = (
     <Box flexDirection="column" alignItems="center">
       {Raster ? (
@@ -175,7 +169,6 @@ async function draw($: any, e: any, isBand: boolean) {
           {Array.from({ length: cats }, (_, i) => <Raster key={`cat${i}`} columns={WIDTH} rows={HEIGHT / 2} cells={frameOf(lookOf(first, i), mode, 0, i) ?? ''} />)}
         </Box>
       ) : null}
-      {!isBand && <Text dimColor>{`[Claude Cat: ${caption}]`}</Text>}
     </Box>
   )
   const sessionView = (
@@ -206,28 +199,13 @@ async function draw($: any, e: any, isBand: boolean) {
       <Text dimColor wrap="wrap">{UPDATE_COMMAND}</Text>
     </Box>
   )
-  if (isBand) {
-    // 배경색을 따로 칠하지 않아 터미널 배경이 그대로 보인다
-    return (
-      <Box flexDirection="column">
-        <Box flexDirection="row">
-          <Box marginLeft={2}>{catView}</Box>
-          <Box flexDirection="column" marginLeft={2} width={cols}>{sessionView}</Box>
-          {agentView && <Box flexDirection="column" marginLeft={2} width={cols}>{agentView}</Box>}
-        </Box>
-        {notice}
-      </Box>
-    )
-  }
+  // 배경색을 따로 칠하지 않아 터미널 배경이 그대로 보인다
   return (
-    // 패널 높이(bodyRows)만큼 늘려서 새 버전 알림이 패널 왼쪽 맨 아래에 붙게 한다
-    <Box flexDirection="column" minHeight={e.props?.scroll?.bodyRows}>
-      <Box flexDirection="column" flexGrow={1}>
-        {catView}
-        <Text> </Text>
-        {sessionView}
-        {agentView && <Text> </Text>}
-        {agentView}
+    <Box flexDirection="column">
+      <Box flexDirection="row">
+        <Box marginLeft={2}>{catView}</Box>
+        <Box flexDirection="column" marginLeft={2} width={cols}>{sessionView}</Box>
+        {agentView && <Box flexDirection="column" marginLeft={2} width={cols}>{agentView}</Box>}
       </Box>
       {notice}
     </Box>
@@ -245,7 +223,7 @@ export const register: Register = on => {
       tick++
       const mode = await read($, cat)
       const where = await read($, layout)
-      const requestId = where === 'band' ? bandId : where === 'pane' ? PANE : ''
+      const requestId = where === 'band' ? bandId : ''
       // 달리기는 매번, 앉기는 4번에 한 번, 자기는 7번에 한 번 그림을 바꾼다
       if (requestId && (mode === 'run' || (mode === 'sit' && tick % 4 === 0) || (mode === 'sleep' && tick % 7 === 0))) {
         const cats = await read($, count)
@@ -255,28 +233,23 @@ export const register: Register = on => {
       }
       if (tick % 25 === 0) await settle($)
     })
-    await $.command.register({ name: 'cat-mode', description: '고양이 켜고 끄기·자리 바꾸기 (그냥 입력하면 켜기/끄기 · 가로: 입력창 위 · 세로: 오른쪽 패널 · 끄기)' })
+    await $.command.register({ name: 'cat-mode', description: '입력창 위 고양이 켜기/끄기' })
     const saved = await $.store.get('layout')
-    const where: Layout = saved === 'pane' || saved === 'off' ? saved : 'band'  // 기본은 가로
+    const where: Layout = saved === 'off' ? 'off' : 'band'  // 기본은 켜짐. 예전에 고른 세로('pane')도 띠로
     await update($, layout, () => where)
-    if (where === 'pane') void $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
     void checkUpdate($).catch(() => {})
     return next(e)
   })
 
+  // 인자 없이 쓰면 켜기/끄기를 번갈아 한다. 예전 이름(가로·끄기)도 받는다
   on('command.run', { command: 'cat-mode' }, async ($, e) => {
     const arg = e.args.trim()
     const now = await read($, layout)
-    // 아무것도 안 주면 켜기/끄기: 켜져 있으면 끄고, 꺼져 있으면 마지막으로 쓰던 자리로 켠다
-    const last = await $.store.get('lastLayout')
-    const where: Layout | undefined = arg === '' ? (now === 'off' ? (last === 'pane' ? 'pane' : 'band') : 'off') : LAYOUTS[arg]
-    if (!where) return { text: '/cat-mode (켜기/끄기) · /cat-mode 가로 (입력창 위) · /cat-mode 세로 (오른쪽 패널) · /cat-mode 끄기' }
+    const where: Layout | undefined = arg === '' ? (now === 'off' ? 'band' : 'off') : arg === '끄기' ? 'off' : arg === '켜기' || arg === '가로' ? 'band' : undefined
+    if (!where) return { text: '/cat-mode 로 고양이를 켜고 꺼요.' }
     await update($, layout, () => where)
     await $.store.set('layout', where)
-    if (where !== 'off') await $.store.set('lastLayout', where)
-    if (where === 'pane') await $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
-    else await $.ui.close({ id: PANE }).catch(() => {})
-    return { text: where === 'off' ? '고양이를 숨겼어요. /cat-mode 로 다시 켜요.' : where === 'band' ? '고양이를 입력창 위에 띄웠어요.' : '고양이를 오른쪽 패널에 띄웠어요.' }
+    return { text: where === 'off' ? '고양이를 숨겼어요. /cat-mode 로 다시 켜요.' : '고양이를 입력창 위에 띄웠어요.' }
   })
 
   on('command.run', { command: 'cat' }, async ($, e) => {
@@ -324,11 +297,9 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, ($, e) => draw($, e, false))
-
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || (await read($, layout)) !== 'band') return next(e)
     bandId = e.requestId
-    return draw($, e, true)
+    return draw($, e)
   })
 }

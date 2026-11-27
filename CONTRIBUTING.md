@@ -7,7 +7,6 @@ Claude Cat에 관심 가져 주셔서 고마워요. 이 레포에 직접 push하
 [Issues](https://github.com/dev-montyoh/claude-cat/issues)에 올려 주세요. 아래 내용을 같이 적어 주면 빨리 볼 수 있어요.
 
 - Claude Code 버전(`claude --version`), 플러그인 버전(`claude plugin list`)
-- 가로(`/cat-mode 가로`)인지 세로인지
 - 화면 스크린샷
 
 ## 코드나 그림 보내기 (PR)
