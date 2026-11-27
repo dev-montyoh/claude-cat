@@ -100,6 +100,8 @@ const DEFAULT_COLOR = '회색'
 /** 저장된 고양이 색. 모르는 값이면 기본 색 */
 const colorOf = (value: unknown): string => (typeof value === 'string' && value in CELLS ? value : DEFAULT_COLOR)
 let color = DEFAULT_COLOR
+/** i번째 고양이의 색. 첫 마리는 고른 색, 나머지는 색 목록에서 차례로 다음 색 */
+const lookOf = (first: string, i: number): CatCells | undefined => CELLS[COLORS[(COLORS.indexOf(first) + i) % COLORS.length] ?? first]
 
 let mainBusy = false
 let sitSince = 0
@@ -146,7 +148,7 @@ async function draw($: any, e: any, isBand: boolean) {
   const cats = await read($, count)
   const cols = Math.max(16, isBand ? Math.floor((body - cats * (WIDTH + 1) - 8) / 2) : body - 2)
   const cut = (s: string) => (s.length > cols ? s.slice(0, cols - 1) + '…' : s)
-  const look = CELLS[colorOf(await $.store.get('catColor'))]
+  const first = colorOf(await $.store.get('catColor'))
   const running = agentList.filter(agent => !agent.isDone).length
   /** 그 세션·에이전트가 만든 할 일 목록(없으면 아무것도 안 그림) */
   const todoView = (id: string) => {
@@ -170,7 +172,7 @@ async function draw($: any, e: any, isBand: boolean) {
     <Box flexDirection="column" alignItems="center">
       {Raster ? (
         <Box flexDirection="row" flexWrap="wrap" gap={1}>
-          {Array.from({ length: cats }, (_, i) => <Raster key={`cat${i}`} columns={WIDTH} rows={HEIGHT / 2} cells={frameOf(look, mode, 0, i) ?? ''} />)}
+          {Array.from({ length: cats }, (_, i) => <Raster key={`cat${i}`} columns={WIDTH} rows={HEIGHT / 2} cells={frameOf(lookOf(first, i), mode, 0, i) ?? ''} />)}
         </Box>
       ) : null}
       {!isBand && <Text dimColor>{`[Claude Cat: ${caption}]`}</Text>}
@@ -248,7 +250,7 @@ export const register: Register = on => {
       if (requestId && (mode === 'run' || (mode === 'sit' && tick % 4 === 0) || (mode === 'sleep' && tick % 7 === 0))) {
         const cats = await read($, count)
         for (let i = 0; i < cats; i++) {
-          void $.ui.blit({ requestId, key: `cat${i}`, cells: frameOf(CELLS[color], mode, tick, i) ?? '' }).catch(() => {})
+          void $.ui.blit({ requestId, key: `cat${i}`, cells: frameOf(lookOf(color, i), mode, tick, i) ?? '' }).catch(() => {})
         }
       }
       if (tick % 25 === 0) await settle($)
