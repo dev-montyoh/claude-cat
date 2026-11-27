@@ -11,24 +11,24 @@ Claude Cat에 관심 가져 주셔서 고마워요. 이 레포에 직접 push하
 
 ## 코드나 그림 보내기 (PR)
 
-1. 레포를 fork하고, `develop`에서 `feature/짧은-이름` 브랜치를 따서 작업해요.
+1. 레포를 fork하고, `main`에서 `feature/짧은-이름` 브랜치를 따서 작업해요.
 2. 아래 확인을 통과시켜요.
    ```sh
    claude plugin validate .   # 플러그인 형식 검사
    claude plugin test .       # tests/ 의 테스트
    ```
-3. **`develop`으로** PR을 보내요. 관리자가 보고 합쳐요.
+3. 열려 있는 **`release/0.1.N`** 브랜치로 PR을 보내요(다음에 나갈 버전이에요). 열린 release 브랜치가 없으면 `main`으로 보내 주세요. 관리자가 옮겨서 합쳐요.
 
 ### 브랜치
 
 | 브랜치 | 역할 |
 |---|---|
 | `main` | 배포본. 사용자가 설치하면 받는 곳이라 항상 동작하는 상태로 둬요 |
-| `develop` | 다음 배포를 모으는 곳. PR은 여기로 보내요 |
-| `feature/*` | 기능·수정 하나. `develop`에서 따서 `develop`으로 |
-| `hotfix/*` | 배포본의 급한 수정. `main`에서 따서 `main`으로, 끝나면 `develop`에도 반영 |
+| `release/0.1.N` | 다음에 낼 버전을 모으는 곳. 다 모이면 `main`으로 합쳐 배포해요 |
+| `feature/*` | 기능·수정 하나. `main`에서 따서 `release/0.1.N`으로 |
+| `hotfix/*` | 배포본의 급한 수정. `feature/*`와 똑같이 `main`에서 따서 `release/0.1.N`으로 |
 
-`main`과 `develop`에는 관리자도 직접 push하지 않고 PR로만 합쳐요.
+`main`과 `release/*`에는 관리자도 직접 push하지 않고 PR로만 합쳐요.
 
 ### 그림을 고칠 때
 
@@ -38,6 +38,6 @@ Claude Cat에 관심 가져 주셔서 고마워요. 이 레포에 직접 push하
 
 ### 버전
 
-`.claude-plugin/plugin.json`의 `version`은 관리자가 합칠 때 올려요. PR에서는 건드리지 않아도 돼요.
+`.claude-plugin/plugin.json`의 `version`은 관리자가 `release/0.1.N` 브랜치를 만들 때 올려요. PR에서는 건드리지 않아도 돼요.
 
 더 자세한 관리 메모는 [DEVELOPMENT.md](DEVELOPMENT.md)에 있어요.

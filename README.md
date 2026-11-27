@@ -28,4 +28,5 @@ claude plugin install progress-cat --marketplace dev-montyoh/claude-cat
 ## 명령
 
 - `/cat 회색|검정|치즈|흰색`: 고양이 색 바꾸기(다음 세션에도 유지)
+- `/cat 1~5`: 고양이 마릿수 바꾸기. 첫 마리는 고른 색, 나머지는 다른 색이고, 고양이마다 다른 박자로 달리고, 쉬고, 잔다(다음 세션에도 유지)
 - `/cat-mode`: 입력창 위 고양이 띠(고양이 | 현재 세션 | 에이전트) 켜기/끄기. 다음 세션에도 유지

@@ -1,1 +1,1 @@
-{"name": "progress-cat", "version": "0.1.7", "description": "현재 세션과 하위 에이전트가 지금 하는 일·할 일 목록을 입력창 위에 보여주고, 작업 상태에 따라 도트 고양이(Claude Cat)가 달리고 쉬고 잔다", "types": "./types/index.d.ts"}
+{"name": "progress-cat", "version": "0.1.8", "description": "현재 세션과 하위 에이전트가 지금 하는 일·할 일 목록을 입력창 위에 보여주고, 작업 상태에 따라 도트 고양이(Claude Cat)가 달리고 쉬고 잔다", "types": "./types/index.d.ts"}
