@@ -14,9 +14,9 @@ const cat = atom({ plugin: 'progress-cat', key: 'cat' } as const, 'sleep', { sha
 /** GitHub에 올라온 더 새 버전. 없으면 '' */
 const newer = atom({ plugin: 'progress-cat', key: 'newer' } as const, '', { shape: 'newer-1' })
 
-/** 어디에 그릴지: 'band' 입력창 바로 위 띠(가로, 기본), 'pane' 오른쪽 패널(세로). $.store에도 남겨 다음 세션에 이어진다 */
+/** 어디에 그릴지: 'band' 입력창 바로 위 띠(가로, 기본), 'pane' 오른쪽 패널(세로), 'off' 숨김. $.store에도 남겨 다음 세션에 이어진다 */
 const layout = atom({ plugin: 'progress-cat', key: 'layout' } as const, 'band', { shape: 'layout-1' })
-const LAYOUTS: Record<string, Layout> = { 세로: 'pane', 가로: 'band' }
+const LAYOUTS: Record<string, Layout> = { 세로: 'pane', 가로: 'band', 끄기: 'off' }
 /** 띠가 그려진 자리(blit할 때 씀). 띠가 아직 안 그려졌으면 '' */
 let bandId = ''
 
@@ -214,14 +214,14 @@ async function draw($: any, e: any, isBand: boolean) {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'progress', description: '작업 진행 패널을 연다' })
     color = colorOf(await $.store.get('catColor'))
     await $.command.register({ name: 'cat', description: `고양이 색을 바꾼다 (${COLORS.join('·')})` })
     let tick = 0
     $.clock.every(120, async () => {
       tick++
       const mode = await read($, cat)
-      const requestId = (await read($, layout)) === 'band' ? bandId : PANE
+      const where = await read($, layout)
+      const requestId = where === 'band' ? bandId : where === 'pane' ? PANE : ''
       const blit = (cells: string | undefined) => { if (requestId) void $.ui.blit({ requestId, key: 'cat', cells: cells ?? '' }).catch(() => {}) }
       if (mode === 'run') blit(CELLS[color]?.run[tick % RUN.length])
       // 앉아 있을 땐 가끔 귀를 쫑긋한다(4장 재생 후 첫 장으로 쉼)
@@ -229,28 +229,28 @@ export const register: Register = on => {
       if (mode === 'sleep' && tick % 7 === 0) blit(CELLS[color]?.sleep[(tick / 7) % 4])
       if (tick % 25 === 0) await settle($)
     })
-    await $.command.register({ name: 'cat-mode', description: '고양이 자리를 바꾼다 (세로: 오른쪽 패널 · 가로: 입력창 위)' })
+    await $.command.register({ name: 'cat-mode', description: '고양이 켜고 끄기·자리 바꾸기 (그냥 입력하면 켜기/끄기 · 가로: 입력창 위 · 세로: 오른쪽 패널 · 끄기)' })
     const saved = await $.store.get('layout')
-    const where: Layout = saved === 'pane' ? 'pane' : 'band'  // 기본은 가로
+    const where: Layout = saved === 'pane' || saved === 'off' ? saved : 'band'  // 기본은 가로
     await update($, layout, () => where)
     if (where === 'pane') void $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
     void checkUpdate($).catch(() => {})
     return next(e)
   })
 
-  on('command.run', { command: 'progress' }, async $ => {
-    await $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
-    return { text: '작업 진행 패널을 열었어요.' }
-  })
-
   on('command.run', { command: 'cat-mode' }, async ($, e) => {
-    const where = LAYOUTS[e.args.trim()]
-    if (!where) return { text: `/cat-mode 세로 (오른쪽 패널) 또는 /cat-mode 가로 (입력창 위)` }
+    const arg = e.args.trim()
+    const now = await read($, layout)
+    // 아무것도 안 주면 켜기/끄기: 켜져 있으면 끄고, 꺼져 있으면 마지막으로 쓰던 자리로 켠다
+    const last = await $.store.get('lastLayout')
+    const where: Layout | undefined = arg === '' ? (now === 'off' ? (last === 'pane' ? 'pane' : 'band') : 'off') : LAYOUTS[arg]
+    if (!where) return { text: '/cat-mode (켜기/끄기) · /cat-mode 가로 (입력창 위) · /cat-mode 세로 (오른쪽 패널) · /cat-mode 끄기' }
     await update($, layout, () => where)
     await $.store.set('layout', where)
-    if (where === 'band') await $.ui.close({ id: PANE }).catch(() => {})
-    else await $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
-    return { text: where === 'band' ? '고양이를 입력창 위로 옮겼어요.' : '고양이를 오른쪽 패널로 옮겼어요.' }
+    if (where !== 'off') await $.store.set('lastLayout', where)
+    if (where === 'pane') await $.ui.open({ id: PANE, title: '작업 진행', backgroundColor: 'transparent' })
+    else await $.ui.close({ id: PANE }).catch(() => {})
+    return { text: where === 'off' ? '고양이를 숨겼어요. /cat-mode 로 다시 켜요.' : where === 'band' ? '고양이를 입력창 위에 띄웠어요.' : '고양이를 오른쪽 패널에 띄웠어요.' }
   })
 
   on('command.run', { command: 'cat' }, async ($, e) => {
