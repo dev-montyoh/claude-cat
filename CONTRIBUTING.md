@@ -12,13 +12,24 @@ Claude Cat에 관심 가져 주셔서 고마워요. 이 레포에 직접 push하
 
 ## 코드나 그림 보내기 (PR)
 
-1. 레포를 fork하고 새 브랜치에서 작업해요.
+1. 레포를 fork하고, `develop`에서 `feature/짧은-이름` 브랜치를 따서 작업해요.
 2. 아래 확인을 통과시켜요.
    ```sh
    claude plugin validate .   # 플러그인 형식 검사
    claude plugin test .       # tests/ 의 테스트
    ```
-3. `main`으로 PR을 보내요. 관리자가 보고 합쳐요. `main`에는 관리자도 직접 push하지 않고 PR로만 합쳐요.
+3. **`develop`으로** PR을 보내요. 관리자가 보고 합쳐요.
+
+### 브랜치
+
+| 브랜치 | 역할 |
+|---|---|
+| `main` | 배포본. 사용자가 설치하면 받는 곳이라 항상 동작하는 상태로 둬요 |
+| `develop` | 다음 배포를 모으는 곳. PR은 여기로 보내요 |
+| `feature/*` | 기능·수정 하나. `develop`에서 따서 `develop`으로 |
+| `hotfix/*` | 배포본의 급한 수정. `main`에서 따서 `main`으로, 끝나면 `develop`에도 반영 |
+
+`main`과 `develop`에는 관리자도 직접 push하지 않고 PR로만 합쳐요.
 
 ### 그림을 고칠 때
 
